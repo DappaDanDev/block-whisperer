@@ -5,18 +5,17 @@ import { CoreMessage, ToolInvocation } from "ai";
 import React, { ReactNode } from "react";
 import { azure } from "@ai-sdk/azure";
 import { BotCard, BotMessage } from "@/components/llm/message";
-import { Loader2 } from "lucide-react";
+import { Bot, Loader2 } from "lucide-react";
 import { symbol, z } from "zod";
 // import {MainClient } from 'binance';
 import { env } from "@/env";
 import { sleep } from "@/lib/utils";
 import { Stats } from "@/components/llm/stats";
 import { StatsSkeleton } from "@/components/llm/stats-skeleton";
-import { normalize } from 'viem/ens'
-import { publicClient } from './client'
-import { Address } from '@coinbase/onchainkit/identity';
-
-
+import { normalize } from "viem/ens";
+import { publicClient } from "./client";
+import { Address } from "@coinbase/onchainkit/identity";
+import { ENSCard } from "@/components/llm/ens-card";
 
 // const binance = new MainClient({
 //     api_key: env.BINANCE_API_KEY,
@@ -94,7 +93,11 @@ export const sendMessage = async (
         }),
         generate: async function* ({ symbol }: { symbol: string }) {
           console.log({ symbol });
-          yield <BotCard><StatsSkeleton/></BotCard>;
+          yield (
+            <BotCard>
+              <StatsSkeleton />
+            </BotCard>
+          );
 
           return null;
         },
@@ -112,20 +115,28 @@ export const sendMessage = async (
         generate: async function* ({ ens }: { ens: string }) {
           console.log({ ens });
           yield <BotCard>Loading...</BotCard>;
-        const ensAddress = await publicClient.getEnsAddress({
-            name: normalize(ens)
-        })
+          const ensAddress = await publicClient.getEnsAddress({
+            name: normalize(ens),
+          });
 
+          const ensAvatar = await publicClient.getEnsAvatar({
+            name: normalize(ens),
+          });
 
-          return  (
-            <Address address={ensAddress} />
-          )
-      
+          const ensCardDetails = {
+            image:
+              typeof ensAvatar === "string" ? ensAvatar : "default_image_url",
+            name: ens,
+            address: ensAddress || "", // Provide a default value when ensAddress is null
+          };
+
+          return (
+            <BotCard>
+              <ENSCard {...ensCardDetails} />
+            </BotCard>
+          );
         },
       },
-
-
-
 
       get_crypto_stats: {
         description:

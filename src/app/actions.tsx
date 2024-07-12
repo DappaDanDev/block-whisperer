@@ -31,12 +31,12 @@ You are a cytpto bot. You can get information about a wallet address that is on 
 
 Message inside [] means that is is a UI element or user event.  For example 
 - "[Wallet address = 0x123456]" means that the interface of the wallet address is shown to the user. 
- - "[Price of BTC = 98989]" means that the interface of the cryptocurrency price of BTC is shown to the user. 
  - "[Stats of BTC]"  meanse that the interface of the cryptocurrency stats of BTC is shown to the user. 
+- "[Portfolio of 0x123456]" means that the interface of the portfolio of the wallet address is shown to the user.
 
-
+ If the user wants to know the portofolio of a wallet, use the wallet address from \'get_address\' to call the \`get_portfolio\` function to show the portfolio. If you don't know the wallet address, ask the user.
+ If the user wants to know how much of a cyptocurrrency a wallet has, call the \`get_portfolio\` function to show the portfolio.
  If the user wants the wallet of an ENS, call the \`get_address\` function to show the ENS.
- If the user provides a wallet address, call the \`get_NFTS\` function to show the NFTs of the wallet address.
  If the user wants the market cap or stats of a given cryptocurrency ca call, \`get_crypto_stats\` to show the stats. 
  if the user wants a stock price, you should respond that you are a demo and cannot do that. 
  If the user wants anything else unrelated to the the function calls \`get_crypto_price\` and \`get_crypto_stats\` you should respond that you are a demo and cannot do that.
@@ -137,12 +137,130 @@ export const sendMessage = async (
             address: ensAddress || "", // Provide a default value when ensAddress is null
           };
 
+          await sleep(1000);
+          history.done([
+            ...history.get(),
+            {
+              role: "assistant",
+              name: "get_address",
+              content: `[Wallet address =  ${ensAddress}]`,
+            },
+          ]);
+
+
           return (
             <BotCard>
               <ENSCard {...ensCardDetails} />
             </BotCard>
           );
         },
+      },
+      get_portfolio: {
+        description:
+            "Get the portfolio of a given wallet address. Use this to show the portfolio to the user",
+        parameters: z.object({
+            address: z
+                .string()
+                .describe(
+                "The wallet address to get the portfolio of. For example, 0x123456789abcdef0123456789abcdef01234567"
+                ),
+            }),
+            generate: async function* ({ address }: { address: string }) {
+                console.log({ address });
+                yield <BotCard>Loading...</BotCard>;
+                
+                await sleep(1000);
+
+                const url = new URL (
+                    `https://api.zerion.io/v1/wallets/${address}/portfolio?currency=usd`
+                );
+
+                await sleep(1000);
+
+
+                const response = await fetch(url, {
+                    headers: {
+                        Accept: 'application/json',
+                        "Authorization": 'Basic emtfZGV2XzI5NzJhNTZjOGRlZjRmYjZhZTRiYzVhNWZjNzU2Mjg0Og=='
+                    }
+                });
+                const json = (await response.json()) as {
+                      links: {
+                        self: string
+                      }
+                      data: {
+                        type: string
+                        id: string
+                        attributes: {
+                            positions_distribution_by_type: {
+                             wallet: number
+                            deposited: number
+                            borrowed: number
+                            locked: number
+                            staked: number
+                      }
+                      positions_distribution_by_chain: {
+                        arbitrum: number
+                        base: number
+                        "binance-smart-chain": number
+                        ethereum: number
+                        optimism: number
+                        polygon: number
+                        xdai: number
+                        zora: number
+                      }
+                      total: {
+                        positions: number
+                      }
+                      changes: {
+                        absolute_1d: number
+                        percent_1d: number
+                      }
+                    }
+                }
+                  };
+
+        
+                  const data = json.data;
+                  const positions = json.data.attributes;
+        
+                  const walletStats = {
+                    wallet: positions.positions_distribution_by_type.wallet,
+                    deposited: positions.positions_distribution_by_type.deposited,
+                    borrowed: positions.positions_distribution_by_type.borrowed,
+                    locked: positions.positions_distribution_by_type.locked,
+                    staked: positions.positions_distribution_by_type.staked,
+                    arbitrum: positions.positions_distribution_by_chain.arbitrum,
+                    base: positions.positions_distribution_by_chain.base,
+                    bsc: positions.positions_distribution_by_chain["binance-smart-chain"],
+                    eth: positions.positions_distribution_by_chain.ethereum,
+                    optimism: positions.positions_distribution_by_chain.optimism,
+                    polygon: positions.positions_distribution_by_chain.polygon,
+                    xdai: positions.positions_distribution_by_chain.xdai,
+                    zora: positions.positions_distribution_by_chain.zora,
+                    totalPositions: positions.total.positions,
+                    absoluteChange1d: positions.changes.absolute_1d,
+                    percentChange1d: positions.changes.percent_1d,
+                   
+                  };
+
+                  await sleep(1000);
+
+                  history.done([
+                    ...history.get(),
+                    {
+                      role: "assistant",
+                      name: "get_portfolio",
+                      content: `[Portfolio of ${address}]`,
+                    },
+                  ]);
+
+                console.log({ walletStats});
+                
+                
+                return null                
+            }
+
       },
 
       get_crypto_stats: {
@@ -244,7 +362,7 @@ export const sendMessage = async (
 
 export type AIState = Array<{
   id?: number;
-  name?: "get_crypto_price" | "get_crypto_stats";
+  name?: "get_portfolio" | "get_crypto_stats" | "get_address";
   role: "user" | "assistant" | "system";
   content: string;
 }>;

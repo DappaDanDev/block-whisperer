@@ -16,6 +16,8 @@ import { normalize } from "viem/ens";
 import { publicClient } from "./client";
 import { Address } from "@coinbase/onchainkit/identity";
 import { ENSCard } from "@/components/llm/ens-card";
+import { ENSSkeleton } from "@/components/llm/ens-skeleton";
+
 
 // const binance = new MainClient({
 //     api_key: env.BINANCE_API_KEY,
@@ -114,7 +116,12 @@ export const sendMessage = async (
         }),
         generate: async function* ({ ens }: { ens: string }) {
           console.log({ ens });
-          yield <BotCard>Loading...</BotCard>;
+          yield (
+            <BotCard>
+              <ENSSkeleton />
+            </BotCard>
+          );
+
           const ensAddress = await publicClient.getEnsAddress({
             name: normalize(ens),
           });

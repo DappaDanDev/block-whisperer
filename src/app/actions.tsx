@@ -200,14 +200,8 @@ export const sendMessage = async (
                                                                     _staked: number
                                                         }
                                                         positions_distribution_by_chain: {
-                                                            arbitrum: number
-                                                            base: number
-                                                            "binance-smart-chain": number
-                                                            ethereum: number
-                                                            optimism: number
-                                                            polygon: number
-                                                            xdai: number
-                                                            zora: number
+                                                            [key: string]: number
+
                                                         }
                                                         total: {
                                                             positions: number
@@ -232,14 +226,8 @@ export const sendMessage = async (
                                                     // borrowed: positions.positions_distribution_by_type.borrowed,
                                                     // locked: positions.positions_distribution_by_type.locked,
                                                     // staked: positions.positions_distribution_by_type.staked,
-                                                    arbitrum: positions.positions_distribution_by_chain.arbitrum,
-                                                    base: positions.positions_distribution_by_chain.base,
-                                                    bsc: positions.positions_distribution_by_chain["binance-smart-chain"],
-                                                    eth: positions.positions_distribution_by_chain.ethereum,
-                                                    optimism: positions.positions_distribution_by_chain.optimism,
-                                                    polygon: positions.positions_distribution_by_chain.polygon,
-                                                    xdai: positions.positions_distribution_by_chain.xdai,
-                                                    zora: positions.positions_distribution_by_chain.zora,
+                                                    ...positions.positions_distribution_by_chain
+
 
                                                     },
                                                     walletAddress: address,

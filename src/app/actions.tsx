@@ -21,6 +21,7 @@ import { WalletPortfolioCard } from "@/components/llm/wallet-portfolio";
 import { NFTDisplay } from "@/components/llm/nft-display";
 import { link } from "fs";
 import { TranscastionCard } from "@/components/llm/transaction-card";
+import { SocialCard } from "@/components/llm/social-card";
 
 const content = `\
 You are a cytpto bot. You can get information about a wallet address that is on the blockchain\
@@ -32,6 +33,7 @@ Message inside [] means that is is a UI element or user event.  For example
 
  If the user wants to know the portofolio of a wallet, use the wallet address from \'get_address\' to call the \`get_portfolio\` function to show the portfolio. If you don't know the wallet address, ask the user.
  If the user wants to know how much of a cyptocurrrency a wallet has, call the \`get_portfolio\` function to show the portfolio.
+ If the user wants to connect or know the social information about a wallet, call the \`get_socials\` function to show the socials.
  If the user wants the wallet of an ENS, call the \`get_address\` function to show the ENS.
  If the user wants the market cap or stats of a given cryptocurrency ca call, \`get_crypto_stats\` to show the stats. 
  if the user wants a stock price, you should respond that you are a demo and cannot do that. 
@@ -328,10 +330,63 @@ export const sendMessage = async (
           return (
             <BotCard>
               {TransactionArray.map((transStats, index: number) => (
-                <TranscastionCard key={index} transactions={[{ ...transStats }]} />
+                <TranscastionCard
+                  key={index}
+                  transactions={[{ ...transStats }]}
+                />
               ))}
             </BotCard>
-          
+          );
+        },
+      },
+      get_socials: {
+        description:
+          "Get ENS of a wallet address. Use this to show the socials to the user",
+        parameters: z.object({
+          ens: z
+            .string()
+            .describe(
+              "Using the ENS to get the social accounts connected to the ENS"
+            ),
+        }),
+        generate: async function* ({ ens }: { ens: string }) {
+          const name = normalize(ens);
+
+          const description = await publicClient.getEnsText({
+            name,
+            key: "description",
+          });
+
+          const [avatar, twitter, discord, github] = await Promise.all([
+            publicClient.getEnsText({
+              name,
+              key: "avatar",
+            }),
+            publicClient.getEnsText({
+              name,
+              key: "com.twitter",
+            }),
+            publicClient.getEnsText({
+              name,
+              key: "com.discord",
+            }),
+            publicClient.getEnsText({
+              name,
+              key: "com.github",
+            }),
+          ]);
+
+          return (
+            <BotCard>
+              <SocialCard
+                image={avatar || ""}
+                name={name}
+                twitter={twitter || ""}
+                discord={discord || ""}
+                github={github || ""}
+                description={description || ""}
+              />
+            </BotCard>
           );
         },
       },
@@ -654,7 +709,8 @@ export type AIState = Array<{
     | "get_address"
     | "get_nft"
     | "get_transactions"
-    | "get_crypto_price";
+    | "get_crypto_price"
+    | "get_socials";
   role: "user" | "assistant" | "system";
   content: string;
 }>;

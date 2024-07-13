@@ -10,7 +10,7 @@ type NFTDisplayProps = NFTDisplayProp[];
 
 export function NFTDisplay({ nftDisplays }: { nftDisplays: NFTDisplayProps }) {
   return (
-    <div className="grid grid-cols-3 gap-4 p-4 md:p-6 w-full">
+    <div className="grid grid-cols-1 gap-4 p-4 md:p-6">
       {nftDisplays.map(({ total_floor_price, name, description, icon }) => (
         <div
           key={name}

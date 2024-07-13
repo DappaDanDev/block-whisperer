@@ -16,7 +16,7 @@ type TransactionCardProps = TransactionCardProp[];
 
 export function TranscastionCard({transactions }: { transactions: TransactionCardProps }) {
   return (
-    <div className="grid grid-cols-3 gap-4 p-4 md:p-6 w-full">
+    <div>
 
     {transactions.map(({ operation_type, name, symbol, icon, id, numeric, sender, recipient }: TransactionCardProp) => (
 

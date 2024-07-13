@@ -7,24 +7,15 @@ import { azure } from "@ai-sdk/azure";
 import { BotCard, BotMessage } from "@/components/llm/message";
 import { Bot, Loader2 } from "lucide-react";
 import { symbol, z } from "zod";
-// import {MainClient } from 'binance';
 import { env } from "@/env";
 import { sleep } from "@/lib/utils";
 import { Stats } from "@/components/llm/stats";
 import { StatsSkeleton } from "@/components/llm/stats-skeleton";
 import { normalize } from "viem/ens";
 import { publicClient } from "./client";
-import { Address } from "@coinbase/onchainkit/identity";
 import { ENSCard } from "@/components/llm/ens-card";
 import { ENSSkeleton } from "@/components/llm/ens-skeleton";
 import { WalletPortfolioCard } from "@/components/llm/wallet-portfolio";
-
-// const binance = new MainClient({
-//     api_key: env.BINANCE_API_KEY,
-//     api_secret: env.BINANCE_API_SECRET,
-// })
-
-// this is the system message
 
 const content = `\
 You are a cytpto bot. You can get information about a wallet address that is on the blockchain\
@@ -40,7 +31,7 @@ Message inside [] means that is is a UI element or user event.  For example
  If the user wants the market cap or stats of a given cryptocurrency ca call, \`get_crypto_stats\` to show the stats. 
  if the user wants a stock price, you should respond that you are a demo and cannot do that. 
  If the user wants anything else unrelated to the the function calls \`get_crypto_price\` and \`get_crypto_stats\` you should respond that you are a demo and cannot do that.
-
+ If the user wants to anything about the NFTs owned by a wallet, call the \`get_nft\` function to show the NFTs.
 `;
 
 export const sendMessage = async (
@@ -61,7 +52,7 @@ export const sendMessage = async (
   ]);
 
   const reply = await streamUI({
-    model: azure("dappa-ai"),
+    model: azure("ksp-azure-openai"),
     messages: [
       {
         role: "system",
@@ -89,292 +80,382 @@ export const sendMessage = async (
         parameters: z.object({
           symbol: z
             .string()
-                                    .describe(
-                                        "The symbol of the cryptocurrency to get the price of. For example, BTC, ETH, DOGE, etc."
-                                    ),
-                            }),
-                            generate: async function* ({ symbol }: { symbol: string }) {
-                                console.log({ symbol });
-                                yield (
-                                    <BotCard>
-                                        <StatsSkeleton />
-                                    </BotCard>
-                                );
+            .describe(
+              "The symbol of the cryptocurrency to get the price of. For example, BTC, ETH, DOGE, etc."
+            ),
+        }),
+        generate: async function* ({ symbol }: { symbol: string }) {
+          console.log({ symbol });
+          yield (
+            <BotCard>
+              <StatsSkeleton />
+            </BotCard>
+          );
 
-                                return null;
-                            },
-                        },
-                        get_address: {
-                            description:
-                                "Get the wallet address of a given ENS. Use this to show the wallet address to the user",
-                            parameters: z.object({
-                                ens: z
-                                    .string()
-                                    .describe(
-                                        "The ENS name to get the wallet address of. For example, ethereum.eth, bitcoin.eth, etc."
-                                    ),
-                            }),
-                            generate: async function* ({ ens }: { ens: string }) {
-                                console.log({ ens });
-                                yield (
-                                    <BotCard>
-                                        <ENSSkeleton />
-                                    </BotCard>
-                                );
+          return null;
+        },
+      },
+      get_address: {
+        description:
+          "Get the wallet address of a given ENS. Use this to show the wallet address to the user",
+        parameters: z.object({
+          ens: z
+            .string()
+            .describe(
+              "The ENS name to get the wallet address of. For example, ethereum.eth, bitcoin.eth, etc."
+            ),
+        }),
+        generate: async function* ({ ens }: { ens: string }) {
+          console.log({ ens });
+          yield (
+            <BotCard>
+              <ENSSkeleton />
+            </BotCard>
+          );
 
-                                const ensAddress = await publicClient.getEnsAddress({
-                                    name: normalize(ens),
-                                });
+          const ensAddress = await publicClient.getEnsAddress({
+            name: normalize(ens),
+          });
 
-                                const ensAvatar = await publicClient.getEnsAvatar({
-                                    name: normalize(ens),
-                                });
+          const ensAvatar = await publicClient.getEnsAvatar({
+            name: normalize(ens),
+          });
 
-                                const ensCardDetails = {
-                                    image:
-                                        typeof ensAvatar === "string" ? ensAvatar : "default_image_url",
-                                    name: ens,
-                                    address: ensAddress || "", // Provide a default value when ensAddress is null
-                                };
+          const ensCardDetails = {
+            image:
+              typeof ensAvatar === "string" ? ensAvatar : "default_image_url",
+            name: ens,
+            address: ensAddress || "", // Provide a default value when ensAddress is null
+          };
 
-                                await sleep(1000);
-                                history.done([
-                                    ...history.get(),
-                                    {
-                                        role: "assistant",
-                                        name: "get_address",
-                                        content: `[Wallet address =  ${ensAddress}]`,
-                                    },
-                                ]);
+          await sleep(1000);
+          history.done([
+            ...history.get(),
+            {
+              role: "assistant",
+              name: "get_address",
+              content: `[Wallet address =  ${ensAddress}]`,
+            },
+          ]);
 
+          return (
+            <BotCard>
+              <ENSCard {...ensCardDetails} />
+            </BotCard>
+          );
+        },
+      },
+      get_portfolio: {
+        description:
+          "Get the portfolio of a given wallet address. Use this to show the portfolio to the user",
+        parameters: z.object({
+          address: z
+            .string()
+            .describe(
+              "The wallet address to get the portfolio of. For example, 0x123456789abcdef0123456789abcdef01234567"
+            ),
+        }),
+        generate: async function* ({ address }: { address: string }) {
+          console.log({ address });
+          yield <BotCard>Loading...</BotCard>;
 
-                                return (
-                                    <BotCard>
-                                        <ENSCard {...ensCardDetails} />
-                                    </BotCard>
-                                );
-                            },
-                        },
-                        get_portfolio: {
-                            description:
-                                    "Get the portfolio of a given wallet address. Use this to show the portfolio to the user",
-                            parameters: z.object({
-                                    address: z
-                                            .string()
-                                            .describe(
-                                            "The wallet address to get the portfolio of. For example, 0x123456789abcdef0123456789abcdef01234567"
-                                            ),
-                                    }),
-                                    generate: async function* ({ address }: { address: string }) {
-                                            console.log({ address });
-                                            yield <BotCard>Loading...</BotCard>;
-                                            
-                                            await sleep(1000);
+          await sleep(1000);
 
-                                            const url = new URL (
-                                                    `https://api.zerion.io/v1/wallets/${address}/portfolio?currency=usd`
-                                            );
+          const url = new URL(
+            `https://api.zerion.io/v1/wallets/${address}/portfolio?currency=usd`
+          );
 
-                                            await sleep(1000);
+          await sleep(1000);
 
-
-                                            const response = await fetch(url, {
-                                                    headers: {
-                                                            Accept: 'application/json',
-                                                            "Authorization": 'Basic emtfZGV2XzI5NzJhNTZjOGRlZjRmYjZhZTRiYzVhNWZjNzU2Mjg0Og=='
-                                                    }
-                                            });
-                                            const json = (await response.json()) as {
-                                                        links: {
-                                                            self: string
-                                                        }
-                                                        data: {
-                                                            type: string
-                                                            id: string
-                                                            attributes: {
-                                                                    positions_distribution_by_type: {
-                                                                     _wallet: number
-                                                                    _deposited: number
-                                                                    _borrowed: number
-                                                                    _locked: number
-                                                                    _staked: number
-                                                        }
-                                                        positions_distribution_by_chain: {
-                                                            [key: string]: number
-
-                                                        }
-                                                        total: {
-                                                            positions: number
-                                                        }
-                                                        changes: {
-                                                            absolute_1d: number
-                                                            percent_1d: number
-                                                        }
-                                                    }
-                                            }
-                                                };
-
-                            
-                                                const data = json.data;
-                                                const positions = json.data.attributes;
-                            
-                                                const walletStats = {
-
-                                                    data: {
-                                                    // wallet: positions.positions_distribution_by_type.wallet,
-                                                    // deposited: positions.positions_distribution_by_type.deposited,
-                                                    // borrowed: positions.positions_distribution_by_type.borrowed,
-                                                    // locked: positions.positions_distribution_by_type.locked,
-                                                    // staked: positions.positions_distribution_by_type.staked,
-                                                    ...positions.positions_distribution_by_chain
-
-
-                                                    },
-                                                    walletAddress: address,
-                                                    totalPositions: positions.total.positions,
-                                                    absoluteChange1d: positions.changes.absolute_1d,
-                                                    percentChange1d: positions.changes.percent_1d,
-                                                 
-                                                };
-
-                                                await sleep(1000);
-
-                                                history.done([
-                                                    ...history.get(),
-                                                    {
-                                                        role: "assistant",
-                                                        name: "get_portfolio",
-                                                        content: `[Portfolio of ${address}]`,
-                                                    },
-                                                ]);
-
-                                            console.log({ walletStats});
-                                            
-                                            
-                                            return (
-                                                    <BotCard>
-                                                            <WalletPortfolioCard {...walletStats} />
-                                                    </BotCard>
-                                            );
-                                    }
-
-                    },
-
-                        get_crypto_stats: {
-                            description:
-                                "Get the market states of a given cryptocurrency. Use this to show the stats to the user",
-                            parameters: z.object({
-                                slug: z
-                                    .string()
-                                    .describe(
-                                        "The name of the cryptocurrency in lowercase, eg bitcoin, ethereum, dogecoin, etc."
-                                    ),
-                            }),
-                            generate: async function* ({ slug }: { slug: string }) {
-                                yield <BotCard>Loading...</BotCard>;
-
-                                const url = new URL(
-                                    `https://api.coinmarketcap.com/data-api/v3/cryptocurrency/detail`
-                                );
-
-                                url.searchParams.append("slug", slug);
-                                url.searchParams.append("limit", "1");
-                                url.searchParams.append("sortBy", "market_cap");
-
-                                const response = await fetch(url, {
-                                    headers: {
-                                        Accept: "application/json",
-                                        "Content-Type": "application/json",
-                                    },
-                                });
-                                if (!response.ok) {
-                                    history.done([
-                                        ...history.get(),
-                                        {
-                                            role: "assistant",
-                                            name: "get_crypto_stats",
-                                            content: `Crypto not found!`,
-                                        },
-                                    ]);
-
-                                    return <BotMessage>Crypto not found!</BotMessage>;
-                                }
-
-                                const json = (await response.json()) as {
-                                    data: {
-                                        id: number;
-                                        name: string;
-                                        symbol: string;
-                                        volume: number;
-                                        volumeChangePercentage24h: number;
-                                        statistics: {
-                                            rank: number;
-                                            totalSupply: number;
-                                            marketCap: number;
-                                            marketCapDominance: number;
-                                        };
-                                    };
-                                };
-
-                                const data = json.data;
-                                const stats = json.data.statistics;
-
-                                const marketStats = {
-                                    name: data.name,
-                                    volume: data.volume,
-                                    volumeChangePercentage24h: data.volumeChangePercentage24h,
-                                    rank: stats.rank,
-                                    marketCap: stats.marketCap,
-                                    totalSupply: stats.totalSupply,
-                                    dominance: stats.marketCapDominance,
-                                };
-
-                                await sleep(1000);
-
-                                history.done([
-                                    ...history.get(),
-                                    {
-                                        role: "assistant",
-                                        name: "get_crypto_stats",
-                                        content: `[Stats of ${data.symbol}]`,
-                                    },
-                                ]);
-
-                                return (
-                                    <BotCard>
-                                        <Stats {...marketStats} />
-                                    </BotCard>
-                                );
-                            },
-                        },
-                    },
-                });
-
-                return {
-                    id: Date.now(),
-                    role: "assistant",
-                    display: reply.value,
-                };
+          const response = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+              Authorization:
+                "Basic emtfZGV2XzI5NzJhNTZjOGRlZjRmYjZhZTRiYzVhNWZjNzU2Mjg0Og==",
+            },
+          });
+          const json = (await response.json()) as {
+            links: {
+              self: string;
             };
+            data: {
+              type: string;
+              id: string;
+              attributes: {
+                positions_distribution_by_type: {
+                  _wallet: number;
+                  _deposited: number;
+                  _borrowed: number;
+                  _locked: number;
+                  _staked: number;
+                };
+                positions_distribution_by_chain: {
+                  [key: string]: number;
+                };
+                total: {
+                  positions: number;
+                };
+                changes: {
+                  absolute_1d: number;
+                  percent_1d: number;
+                };
+              };
+            };
+          };
 
-            export type AIState = Array<{
-                id?: number;
-                name?: "get_portfolio" | "get_crypto_stats" | "get_address";
-                role: "user" | "assistant" | "system";
-                content: string;
-            }>;
+          const data = json.data;
+          const positions = json.data.attributes;
 
-            export type UIState = Array<{
-                id: number;
-                role: "user" | "assistant";
-                display: ReactNode;
-                toolInvocations?: ToolInvocation[];
-            }>;
+          const walletStats = {
+            data: {
+              // wallet: positions.positions_distribution_by_type.wallet,
+              // deposited: positions.positions_distribution_by_type.deposited,
+              // borrowed: positions.positions_distribution_by_type.borrowed,
+              // locked: positions.positions_distribution_by_type.locked,
+              // staked: positions.positions_distribution_by_type.staked,
+              ...positions.positions_distribution_by_chain,
+            },
+            walletAddress: address,
+            totalPositions: positions.total.positions,
+            absoluteChange1d: positions.changes.absolute_1d,
+            percentChange1d: positions.changes.percent_1d,
+          };
 
-            export const AI = createAI({
-                initialAIState: [] as AIState,
-                initialUIState: [] as UIState,
-                actions: {
-                    sendMessage,
-                },
-            });
+          await sleep(1000);
+
+          history.done([
+            ...history.get(),
+            {
+              role: "assistant",
+              name: "get_portfolio",
+              content: `[Portfolio of ${address}]`,
+            },
+          ]);
+
+          console.log({ walletStats });
+
+          return (
+            <BotCard>
+              <WalletPortfolioCard {...walletStats} />
+            </BotCard>
+          );
+        },
+      },
+      get_nft: {
+        description:
+          "Get the NFTs owned by a given wallet address. Use this to show the NFTs to the user",
+        parameters: z.object({
+          address: z
+            .string()
+            .describe(
+              "The wallet address to get the NFTs of. For example, 0x123456789abcdef0123456789abcdef01234567"
+            ),
+        }),
+        generate: async function* ({ address }: { address: string }) {
+          yield <BotCard>Loading...</BotCard>;
+
+          await sleep(1000);
+
+          const url = new URL(
+            `https://api.zerion.io/v1/wallets/${address}/nft-collections/?currency=usd`
+          );
+
+          await sleep(1000);
+          const response = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+              Authorization:
+                "Basic emtfZGV2XzI5NzJhNTZjOGRlZjRmYjZhZTRiYzVhNWZjNzU2Mjg0Og==",
+            },
+          });
+          const json = (await response.json()) as {
+            links: {
+              self: string;
+            };
+            data: {
+              _type: string;
+              _id: string;
+              attributes: {
+                _min_changed_at: string;
+                _max_changed_at: string;
+                _nfts_count: string;
+                total_floor_price: number;
+              };
+              collection_info: {
+                name: string;
+                description: string;
+                content: {
+                  icon: {
+                    url: string;
+                  };
+                  _banner: {
+                    url: string;
+                  };
+                };
+                relationships: {
+                  chains: {
+                    data: [
+                      {
+                        type: string;
+                        id: string;
+                      }
+                    ];
+                    nft_collections: {
+                      data: [
+                        {
+                          _type: string;
+                          _id: string;
+                        }
+                      ];
+                    };
+                  };
+                };
+              };
+            };
+          };
+          const data = json.data;
+          const nft = json.data.collection_info;
+
+          const nftStats = {
+            nfts_count: data.attributes._nfts_count,
+            floor_price: data.attributes.total_floor_price,
+            name: nft.name,
+            description: nft.description,
+            icon: nft.content.icon.url,
+          };
+
+          console.log({ nftStats });
+          history.done([
+            ...history.get(),
+            {
+              role: "assistant",
+              name: "get_nft",
+              content: `[Stats of ${address}]`,
+            },
+          ]);
+          return (
+            <BotCard>
+              <p>{address}</p>
+            </BotCard>
+          );
+        },
+      },
+
+      get_crypto_stats: {
+        description:
+          "Get the market states of a given cryptocurrency. Use this to show the stats to the user",
+        parameters: z.object({
+          slug: z
+            .string()
+            .describe(
+              "The name of the cryptocurrency in lowercase, eg bitcoin, ethereum, dogecoin, etc."
+            ),
+        }),
+        generate: async function* ({ slug }: { slug: string }) {
+          yield <BotCard>Loading...</BotCard>;
+
+          const url = new URL(
+            `https://api.coinmarketcap.com/data-api/v3/cryptocurrency/detail`
+          );
+
+          url.searchParams.append("slug", slug);
+          url.searchParams.append("limit", "1");
+          url.searchParams.append("sortBy", "market_cap");
+
+          const response = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          });
+          if (!response.ok) {
+            history.done([
+              ...history.get(),
+              {
+                role: "assistant",
+                name: "get_crypto_stats",
+                content: `Crypto not found!`,
+              },
+            ]);
+
+            return <BotMessage>Crypto not found!</BotMessage>;
+          }
+
+          const json = (await response.json()) as {
+            data: {
+              id: number;
+              name: string;
+              symbol: string;
+              volume: number;
+              volumeChangePercentage24h: number;
+              statistics: {
+                rank: number;
+                totalSupply: number;
+                marketCap: number;
+                marketCapDominance: number;
+              };
+            };
+          };
+
+          const data = json.data;
+          const stats = json.data.statistics;
+
+          const marketStats = {
+            name: data.name,
+            volume: data.volume,
+            volumeChangePercentage24h: data.volumeChangePercentage24h,
+            rank: stats.rank,
+            marketCap: stats.marketCap,
+            totalSupply: stats.totalSupply,
+            dominance: stats.marketCapDominance,
+          };
+
+          await sleep(1000);
+
+          history.done([
+            ...history.get(),
+            {
+              role: "assistant",
+              name: "get_crypto_stats",
+              content: `[Stats of ${data.symbol}]`,
+            },
+          ]);
+
+          return (
+            <BotCard>
+              <Stats {...marketStats} />
+            </BotCard>
+          );
+        },
+      },
+    },
+  });
+
+  return {
+    id: Date.now(),
+    role: "assistant",
+    display: reply.value,
+  };
+};
+
+export type AIState = Array<{
+  id?: number;
+  name?: "get_portfolio" | "get_crypto_stats" | "get_address" | "get_nft";
+  role: "user" | "assistant" | "system";
+  content: string;
+}>;
+
+export type UIState = Array<{
+  id: number;
+  role: "user" | "assistant";
+  display: ReactNode;
+  toolInvocations?: ToolInvocation[];
+}>;
+
+export const AI = createAI({
+  initialAIState: [] as AIState,
+  initialUIState: [] as UIState,
+  actions: {
+    sendMessage,
+  },
+});

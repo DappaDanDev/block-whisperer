@@ -4,6 +4,8 @@ import { createAI, getMutableAIState, streamUI } from "ai/rsc";
 import { CoreMessage, ToolInvocation } from "ai";
 import React, { ReactNode } from "react";
 import { azure } from "@ai-sdk/azure";
+import { openai } from '@ai-sdk/openai';
+
 import { BotCard, BotMessage } from "@/components/llm/message";
 import { Bot, Loader2 } from "lucide-react";
 import { symbol, z } from "zod";
@@ -16,6 +18,8 @@ import { publicClient } from "./client";
 import { ENSCard } from "@/components/llm/ens-card";
 import { ENSSkeleton } from "@/components/llm/ens-skeleton";
 import { WalletPortfolioCard } from "@/components/llm/wallet-portfolio";
+import { NFTDisplay } from "@/components/llm/nft-display";
+
 
 const content = `\
 You are a cytpto bot. You can get information about a wallet address that is on the blockchain\
@@ -52,7 +56,8 @@ export const sendMessage = async (
   ]);
 
   const reply = await streamUI({
-    model: azure("ksp-azure-openai"),
+    // model: azure("ksp-azure-openai"),
+    model: openai("gpt-4o"),
     messages: [
       {
         role: "system",
@@ -272,34 +277,35 @@ export const sendMessage = async (
             links: {
               self: string;
             };
-            data: {
-              _type: string;
-              _id: string;
-              attributes: {
-                _min_changed_at: string;
-                _max_changed_at: string;
-                _nfts_count: string;
-                total_floor_price: number;
-              };
-              collection_info: {
-                name: string;
-                description: string;
-                content: {
-                  icon: {
-                    url: string;
+            data: Array<{
+                _type: string;
+                _id: string;
+                attributes: {
+                  _min_changed_at: string;
+                  _max_changed_at: string;
+                  _nfts_count: string;
+                  total_floor_price: number;
+                  collection_info: {
+                    name: string;
+                    description: string;
+                    content: {
+                      icon: {
+                        url: string;
+                      };
+                      _banner: {
+                        url: string;
+                      };
+                    };
                   };
-                  _banner: {
-                    url: string;
-                  };
-                };
-                relationships: {
-                  chains: {
-                    data: [
-                      {
-                        type: string;
-                        id: string;
-                      }
-                    ];
+                  relationships: {
+                    chains: {
+                      data: [
+                        {
+                          type: string;
+                          id: string;
+                        }
+                      ];
+                    };
                     nft_collections: {
                       data: [
                         {
@@ -310,34 +316,50 @@ export const sendMessage = async (
                     };
                   };
                 };
-              };
-            };
-          };
-          const data = json.data;
-          const nft = json.data.collection_info;
-
-          const nftStats = {
-            nfts_count: data.attributes._nfts_count,
-            floor_price: data.attributes.total_floor_price,
-            name: nft.name,
-            description: nft.description,
-            icon: nft.content.icon.url,
+              }>;
           };
 
-          console.log({ nftStats });
-          history.done([
-            ...history.get(),
-            {
-              role: "assistant",
-              name: "get_nft",
-              content: `[Stats of ${address}]`,
-            },
-          ]);
-          return (
-            <BotCard>
-              <p>{address}</p>
-            </BotCard>
-          );
+    let nftStatsArray: { total_floor_price: number; name: string; description: string; icon: string; }[] = [];
+
+
+    await sleep(5000);
+
+ 
+    if (json && json.data) {
+                        json.data.forEach((nft) => {
+                    if (nft && 
+                        nft.attributes && 
+                        nft.attributes.collection_info && 
+                        nft.attributes.collection_info.content && 
+                        nft.attributes.collection_info.name && 
+                        nft.attributes.collection_info.description && 
+                        nft.attributes.collection_info.content &&
+                        nft.attributes.collection_info.content.icon.url
+                    
+                    ) {
+
+                            const nftStats = {
+                        total_floor_price: nft.attributes.total_floor_price,
+                        name: nft.attributes.collection_info.name,
+                        description: nft.attributes.collection_info.description,
+                        icon: nft.attributes.collection_info.content.icon.url,
+                        // rest of your code
+                    };
+                    nftStatsArray.push(nftStats); // This will print each name
+
+                }
+        }); // Add closing parenthesis here
+       
+    }
+    console.log(json.data);
+
+            return (
+                <BotCard>
+                    {nftStatsArray.map((nftStats, index: number) => (
+                        <NFTDisplay key={index} nftDisplays={[{...nftStats}]} />
+                    ))}
+                </BotCard>
+            );
         },
       },
 

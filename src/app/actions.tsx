@@ -4,11 +4,11 @@ import { createAI, getMutableAIState, streamUI } from "ai/rsc";
 import { CoreMessage, ToolInvocation } from "ai";
 import React, { ReactNode } from "react";
 import { azure } from "@ai-sdk/azure";
-import { openai } from '@ai-sdk/openai';
+import { openai } from "@ai-sdk/openai";
 
 import { BotCard, BotMessage } from "@/components/llm/message";
 import { Bot, Loader2 } from "lucide-react";
-import { symbol, z } from "zod";
+import { boolean, symbol, z } from "zod";
 import { env } from "@/env";
 import { sleep } from "@/lib/utils";
 import { Stats } from "@/components/llm/stats";
@@ -19,7 +19,8 @@ import { ENSCard } from "@/components/llm/ens-card";
 import { ENSSkeleton } from "@/components/llm/ens-skeleton";
 import { WalletPortfolioCard } from "@/components/llm/wallet-portfolio";
 import { NFTDisplay } from "@/components/llm/nft-display";
-
+import { link } from "fs";
+import { TranscastionCard } from "@/components/llm/transaction-card";
 
 const content = `\
 You are a cytpto bot. You can get information about a wallet address that is on the blockchain\
@@ -36,7 +37,9 @@ Message inside [] means that is is a UI element or user event.  For example
  if the user wants a stock price, you should respond that you are a demo and cannot do that. 
  If the user wants anything else unrelated to the the function calls \`get_crypto_price\` and \`get_crypto_stats\` you should respond that you are a demo and cannot do that.
  If the user wants to anything about the NFTs owned by a wallet, call the \`get_nft\` function to show the NFTs.
-`;
+If the user wants to know if a wallet owns a specific NFT (example: "Does Dappadan.eth own a POAP?"), call the \`get_nft\` function, this function returns a \`name\` and \`description\` . Try to match the name the user described with the name or description returned by the function. If Yes, show the icon image of the NFT. If no, just say no. Don't show the NFT until you are sure there is a match, if you are unsure say "I don't know".
+If the user want to know about the transactions of a wallet address or ENS, call the \`get_transactions\` function to show the transactions. The user should speficify how many transactions they want to see. If they don't ask for a specific number, show the last 5 transactions.
+ `;
 
 export const sendMessage = async (
   message: string
@@ -150,6 +153,189 @@ export const sendMessage = async (
           );
         },
       },
+      get_transactions: {
+        description:
+          "Get the transactions of a given wallet address. Use this to show the transactions to the user",
+        parameters: z.object({
+          address: z
+            .string()
+            .describe(
+              "The wallet address to get recent transactions.  For example, 0x123456789abcdef0123456789abcdef01234567"
+            ),
+        }),
+        generate: async function* ({ address }: { address: string }) {
+          console.log({ address });
+          yield <BotCard>Loading...</BotCard>;
+
+          await sleep(1000);
+
+          const url = new URL(
+            `https://api.zerion.io/v1/wallets/${address}/transactions/`
+          );
+
+          url.searchParams.append("page[size]", "5");
+
+          await sleep(1000);
+
+          const response = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+              Authorization:
+                "Basic emtfZGV2XzI5NzJhNTZjOGRlZjRmYjZhZTRiYzVhNWZjNzU2Mjg0Og==",
+            },
+          });
+          const json = (await response.json()) as {
+            links: {
+              self: string;
+              links: string;
+            };
+            data: Array<{
+              _type: string;
+              _id: string;
+              attributes: {
+                operation_type: string;
+                _hash: string;
+                _mined_at_block: number;
+                _mined_at: string;
+                _sent_amount: string;
+                _sent_to: string;
+                _status: string;
+                _nonce: number;
+                fee: {
+                  fungible_info: {
+                    name: string;
+                    symbol: string;
+                    icon: {
+                      url: string;
+                    };
+                    _flags: {
+                      _verified: string;
+                    };
+                  };
+                  implementations: Array<{
+                    chain_id: string;
+                    _address: string;
+                    _decimals: number;
+                  }>;
+                  quantity: {
+                    _int: string;
+                    _decimals: number;
+                    _float: number;
+                    numeric: string;
+                  };
+                  _price: number;
+                  _value: number;
+                };
+                transfers: Array<{
+                  fungible_info: {
+                    _name: string;
+                    _symbol: string;
+                    _icon: string;
+                    _flags: {
+                      _verified: boolean;
+                    };
+                    _implementations: Array<{
+                      _chain_id: string;
+                      _address: string;
+                      _decimals: number;
+                    }>;
+                  };
+
+                  _direction: string;
+                  _quote: {
+                    _int: string;
+                    _decimals: number;
+                    _float: number;
+                    _numeric: string;
+                  };
+                  _value: number;
+                  _price: number;
+                  sender: string;
+                  recipient: string;
+                }>;
+                _approvals: Array<{}>;
+
+                _application_metadata: {
+                  _contract_address: string;
+                };
+                _flags: {
+                  _is_trash: boolean;
+                };
+              };
+              relationships: {
+                chain: {
+                  _links: {
+                    _related: string;
+                  };
+                  data: {
+                    _type: string;
+                    id: string;
+                  };
+                };
+                _dapp: {
+                  _data: {
+                    _type: string;
+                    _id: string;
+                  };
+                };
+              };
+            }>;
+          };
+          let TransactionArray: {
+            operation_type: string;
+            name: string;
+            symbol: string;
+            icon: string;
+            id: string;
+            numeric: string;
+            sender: string;
+            recipient: string;
+          }[] = [];
+
+          await sleep(5000);
+
+          if (json && json.data) {
+            json.data.forEach((transact) => {
+              if (
+                transact &&
+                transact.attributes.operation_type &&
+                transact.attributes.fee.fungible_info.name &&
+                transact.attributes.fee.fungible_info.symbol &&
+                transact.attributes.fee.fungible_info.icon.url &&
+                transact.attributes.fee.quantity.numeric &&
+                transact.attributes.transfers[0].sender &&
+                transact.attributes.transfers[0].recipient &&
+                transact.relationships.chain.data.id
+              ) {
+                const transStats = {
+                  operation_type: transact.attributes.operation_type,
+                  name: transact.attributes.fee.fungible_info.name,
+                  symbol: transact.attributes.fee.fungible_info.symbol,
+                  icon: transact.attributes.fee.fungible_info.icon.url,
+                  id: transact.relationships.chain.data.id,
+                  numeric: transact.attributes.fee.quantity.numeric,
+                  sender: transact.attributes.transfers[0].sender,
+                  recipient: transact.attributes.transfers[0].recipient,
+                };
+
+                TransactionArray.push(transStats);
+              }
+            });
+          }
+
+          console.log(TransactionArray);
+
+          return (
+            <BotCard>
+              {TransactionArray.map((transStats, index: number) => (
+                <TranscastionCard key={index} transactions={[{ ...transStats }]} />
+              ))}
+            </BotCard>
+          
+          );
+        },
+      },
+
       get_portfolio: {
         description:
           "Get the portfolio of a given wallet address. Use this to show the portfolio to the user",
@@ -278,88 +464,88 @@ export const sendMessage = async (
               self: string;
             };
             data: Array<{
-                _type: string;
-                _id: string;
-                attributes: {
-                  _min_changed_at: string;
-                  _max_changed_at: string;
-                  _nfts_count: string;
-                  total_floor_price: number;
-                  collection_info: {
-                    name: string;
-                    description: string;
-                    content: {
-                      icon: {
-                        url: string;
-                      };
-                      _banner: {
-                        url: string;
-                      };
+              _type: string;
+              _id: string;
+              attributes: {
+                _min_changed_at: string;
+                _max_changed_at: string;
+                _nfts_count: string;
+                total_floor_price: number;
+                collection_info: {
+                  name: string;
+                  description: string;
+                  content: {
+                    icon: {
+                      url: string;
                     };
-                  };
-                  relationships: {
-                    chains: {
-                      data: [
-                        {
-                          type: string;
-                          id: string;
-                        }
-                      ];
-                    };
-                    nft_collections: {
-                      data: [
-                        {
-                          _type: string;
-                          _id: string;
-                        }
-                      ];
+                    _banner: {
+                      url: string;
                     };
                   };
                 };
-              }>;
+                relationships: {
+                  chains: {
+                    data: [
+                      {
+                        type: string;
+                        id: string;
+                      }
+                    ];
+                  };
+                  nft_collections: {
+                    data: [
+                      {
+                        _type: string;
+                        _id: string;
+                      }
+                    ];
+                  };
+                };
+              };
+            }>;
           };
 
-    let nftStatsArray: { total_floor_price: number; name: string; description: string; icon: string; }[] = [];
+          let nftStatsArray: {
+            total_floor_price: number;
+            name: string;
+            description: string;
+            icon: string;
+          }[] = [];
 
+          await sleep(5000);
 
-    await sleep(5000);
+          if (json && json.data) {
+            json.data.forEach((nft) => {
+              if (
+                nft &&
+                nft.attributes &&
+                nft.attributes.collection_info &&
+                nft.attributes.collection_info.content &&
+                nft.attributes.collection_info.name &&
+                nft.attributes.collection_info.description &&
+                nft.attributes.collection_info.content &&
+                nft.attributes.collection_info.content.icon.url
+              ) {
+                const nftStats = {
+                  total_floor_price: nft.attributes.total_floor_price,
+                  name: nft.attributes.collection_info.name,
+                  description: nft.attributes.collection_info.description,
+                  icon: nft.attributes.collection_info.content.icon.url,
+                  // rest of your code
+                };
+                nftStatsArray.push(nftStats); // This will print each name
+              }
+            }); // Add closing parenthesis here
+          }
+          console.log(json.data);
 
- 
-    if (json && json.data) {
-                        json.data.forEach((nft) => {
-                    if (nft && 
-                        nft.attributes && 
-                        nft.attributes.collection_info && 
-                        nft.attributes.collection_info.content && 
-                        nft.attributes.collection_info.name && 
-                        nft.attributes.collection_info.description && 
-                        nft.attributes.collection_info.content &&
-                        nft.attributes.collection_info.content.icon.url
-                    
-                    ) {
-
-                            const nftStats = {
-                        total_floor_price: nft.attributes.total_floor_price,
-                        name: nft.attributes.collection_info.name,
-                        description: nft.attributes.collection_info.description,
-                        icon: nft.attributes.collection_info.content.icon.url,
-                        // rest of your code
-                    };
-                    nftStatsArray.push(nftStats); // This will print each name
-
-                }
-        }); // Add closing parenthesis here
-       
-    }
-    console.log(json.data);
-
-            return (
-                <BotCard>
-                    {nftStatsArray.map((nftStats, index: number) => (
-                        <NFTDisplay key={index} nftDisplays={[{...nftStats}]} />
-                    ))}
-                </BotCard>
-            );
+          return (
+            <BotCard>
+              {nftStatsArray.map((nftStats, index: number) => (
+                <NFTDisplay key={index} nftDisplays={[{ ...nftStats }]} />
+              ))}
+            </BotCard>
+          );
         },
       },
 
@@ -462,7 +648,13 @@ export const sendMessage = async (
 
 export type AIState = Array<{
   id?: number;
-  name?: "get_portfolio" | "get_crypto_stats" | "get_address" | "get_nft";
+  name?:
+    | "get_portfolio"
+    | "get_crypto_stats"
+    | "get_address"
+    | "get_nft"
+    | "get_transactions"
+    | "get_crypto_price";
   role: "user" | "assistant" | "system";
   content: string;
 }>;

@@ -30,6 +30,8 @@ Message inside [] means that is is a UI element or user event.  For example
 - "[Wallet address = 0x123456]" means that the interface of the wallet address is shown to the user. 
  - "[Stats of BTC]"  meanse that the interface of the cryptocurrency stats of BTC is shown to the user. 
 - "[Portfolio of 0x123456]" means that the interface of the portfolio of the wallet address is shown to the user.
+- "[Socials of Dappadan.eth]" means that the interface of the socials of the wallet address is shown to the user.
+
 
  If the user wants to know the portofolio of a wallet, use the wallet address from \'get_address\' to call the \`get_portfolio\` function to show the portfolio. If you don't know the wallet address, ask the user.
  If the user wants to know how much of a cyptocurrrency a wallet has, call the \`get_portfolio\` function to show the portfolio.
@@ -41,7 +43,10 @@ Message inside [] means that is is a UI element or user event.  For example
  If the user wants to anything about the NFTs owned by a wallet, call the \`get_nft\` function to show the NFTs.
 If the user wants to know if a wallet owns a specific NFT (example: "Does Dappadan.eth own a POAP?"), call the \`get_nft\` function, this function returns a \`name\` and \`description\` . Try to match the name the user described with the name or description returned by the function. If Yes, show the icon image of the NFT. If no, just say no. Don't show the NFT until you are sure there is a match, if you are unsure say "I don't know".
 If the user want to know about the transactions of a wallet address or ENS, call the \`get_transactions\` function to show the transactions. The user should speficify how many transactions they want to see. If they don't ask for a specific number, show the last 5 transactions.
- `;
+If the user wants to know about their own wallet actvity, address, or portfolio, first ask what is their ENS Name or wallet address. First call the \`get_address\` function to show the wallet address. Then call the correct function like \`get_portfolio\` function to show the portfolio.
+If the user wants to know about a specific operation type of transactions, for example "show me my last mint" or "what was the last deposit" , call the \`get_specific_transaction\` function. Extract the operation type from the user's questions for example: "show me my last mint" the transaction type is "mint" or "what was luc.eth last trade?", the operation type is "trade" If you don't know the wallet address or ENS name, then ask. Return one transaction. Available operation types are "mint", "deposit", "withdraw", "approval", "transfer", and "trade". If you are unsure of the operation type, ask the user to clarify. The operation type cannot be "recieve". 
+
+`;
 
 export const sendMessage = async (
   message: string
@@ -176,8 +181,204 @@ export const sendMessage = async (
           );
 
           url.searchParams.append("page[size]", "5");
-          url.searchParams.append("[trash]", "only_non_trash")
+          url.searchParams.append("[trash]", "only_non_trash");
 
+          await sleep(1000);
+
+          const response = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+              Authorization:
+                "Basic emtfZGV2XzI5NzJhNTZjOGRlZjRmYjZhZTRiYzVhNWZjNzU2Mjg0Og==",
+            },
+          });
+          const json = (await response.json()) as {
+            links: {
+              self: string;
+              links: string;
+            };
+            data: Array<{
+              _type: string;
+              _id: string;
+              attributes: {
+                operation_type: string;
+                _hash: string;
+                _mined_at_block: number;
+                _mined_at: string;
+                _sent_amount: string;
+                _sent_to: string;
+                _status: string;
+                _nonce: number;
+                fee: {
+                  fungible_info: {
+                    name: string;
+                    symbol: string;
+                    icon: {
+                      url: string;
+                    };
+                    _flags: {
+                      _verified: string;
+                    };
+                  };
+                  implementations: Array<{
+                    chain_id: string;
+                    _address: string;
+                    _decimals: number;
+                  }>;
+                  quantity: {
+                    _int: string;
+                    _decimals: number;
+                    _float: number;
+                    numeric: string;
+                  };
+                  _price: number;
+                  _value: number;
+                };
+                transfers: Array<{
+                  fungible_info: {
+                    _name: string;
+                    _symbol: string;
+                    _icon: string;
+                    _flags: {
+                      _verified: boolean;
+                    };
+                    _implementations: Array<{
+                      _chain_id: string;
+                      _address: string;
+                      _decimals: number;
+                    }>;
+                  };
+
+                  _direction: string;
+                  _quote: {
+                    _int: string;
+                    _decimals: number;
+                    _float: number;
+                    _numeric: string;
+                  };
+                  _value: number;
+                  _price: number;
+                  sender: string;
+                  recipient: string;
+                }>;
+                _approvals: Array<{}>;
+
+                _application_metadata: {
+                  _contract_address: string;
+                };
+                _flags: {
+                  _is_trash: boolean;
+                };
+              };
+              relationships: {
+                chain: {
+                  _links: {
+                    _related: string;
+                  };
+                  data: {
+                    _type: string;
+                    id: string;
+                  };
+                };
+                _dapp: {
+                  _data: {
+                    _type: string;
+                    _id: string;
+                  };
+                };
+              };
+            }>;
+          };
+          let TransactionArray: {
+            operation_type: string;
+            name: string;
+            symbol: string;
+            icon: string;
+            id: string;
+            numeric: string;
+            sender: string;
+            recipient: string;
+          }[] = [];
+
+          await sleep(5000);
+
+          if (json && json.data) {
+            json.data.forEach((transact) => {
+              if (
+                transact &&
+                transact.attributes.operation_type &&
+                transact.attributes.fee.fungible_info.name &&
+                transact.attributes.fee.fungible_info.symbol &&
+                transact.attributes.fee.fungible_info.icon.url &&
+                transact.attributes.fee.quantity.numeric &&
+                transact.attributes.transfers[0].sender &&
+                transact.attributes.transfers[0].recipient &&
+                transact.relationships.chain.data.id
+              ) {
+                const transStats = {
+                  operation_type: transact.attributes.operation_type,
+                  name: transact.attributes.fee.fungible_info.name,
+                  symbol: transact.attributes.fee.fungible_info.symbol,
+                  icon: transact.attributes.fee.fungible_info.icon.url,
+                  id: transact.relationships.chain.data.id,
+                  numeric: transact.attributes.fee.quantity.numeric,
+                  sender: transact.attributes.transfers[0].sender,
+                  recipient: transact.attributes.transfers[0].recipient,
+                };
+
+                TransactionArray.push(transStats);
+              }
+            });
+          }
+
+          console.log(TransactionArray);
+
+          return (
+            <BotCard>
+              {TransactionArray.map((transStats, index: number) => (
+                <TranscastionCard
+                  key={index}
+                  transactions={[{ ...transStats }]}
+                />
+              ))}
+            </BotCard>
+          );
+        },
+      },
+      get_specific_transactions: {
+        description:
+          "Get specific transaction data of a specific data type provided by the user of a given wallet address. Use this to show the one transaction that is the transaction type provided by the user",
+        parameters: z.object({
+          address: z
+            .string()
+            .describe(
+              "The wallet address to get recent transactions.  For example, 0x123456789abcdef0123456789abcdef01234567"
+            ),
+          operationType: z
+            .string()
+            .describe(
+              "The transaction type to get. For example, mint, recieve, approval, etc."
+            ),
+        }),
+        generate: async function* ({
+          address,
+          operationType,
+        }: {
+          address: string;
+          operationType: string;
+        }) {
+          console.log({ address });
+          yield <BotCard>Loading...</BotCard>;
+
+          await sleep(1000);
+
+          const url = new URL(
+            `https://api.zerion.io/v1/wallets/${address}/transactions/`
+          );
+
+          url.searchParams.append("page[size]", "1");
+          url.searchParams.append("[trash]", "only_non_trash");
+          url.searchParams.append("[operation_types]", operationType);
           await sleep(1000);
 
           const response = await fetch(url, {
@@ -711,7 +912,8 @@ export type AIState = Array<{
     | "get_nft"
     | "get_transactions"
     | "get_crypto_price"
-    | "get_socials";
+    | "get_socials"
+    | "get_specific_transactions";
   role: "user" | "assistant" | "system";
   content: string;
 }>;

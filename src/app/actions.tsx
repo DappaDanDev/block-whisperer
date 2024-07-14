@@ -176,6 +176,7 @@ export const sendMessage = async (
           );
 
           url.searchParams.append("page[size]", "5");
+          url.searchParams.append("[trash]", "only_non_trash")
 
           await sleep(1000);
 

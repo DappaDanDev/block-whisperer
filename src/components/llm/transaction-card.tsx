@@ -42,18 +42,18 @@ export function TranscastionCard({transactions }: { transactions: TransactionCar
         <div>
           <div className="text-sm font-medium text-muted-foreground">Sender</div>
           <div className="flex items-center gap-2">
-            <div className="bg-muted rounded-md flex items-center justify-center aspect-square w-8">
+            {/* <div className="bg-muted rounded-md flex items-center justify-center aspect-square w-8">
               <img src="/placeholder.svg" alt="User" className="h-4 w-4" />
-            </div>
+            </div> */}
             <div className="text-sm font-medium truncate">{sender}</div>
           </div>
         </div>
         <div>
           <div className="text-sm font-medium text-muted-foreground">Recipient</div>
           <div className="flex items-center gap-2">
-            <div className="bg-muted rounded-md flex items-center justify-center aspect-square w-8">
+            {/* <div className="bg-muted rounded-md flex items-center justify-center aspect-square w-8">
               <img src="/placeholder.svg" alt="User" className="h-4 w-4" />
-            </div>
+            </div> */}
             <div className="text-sm font-medium truncate">{recipient}</div>
           </div>
         </div>

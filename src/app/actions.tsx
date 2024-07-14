@@ -697,7 +697,7 @@ export const sendMessage = async (
         parameters: z.object({
           address: z
             .string()
-            .describe(
+              .describe(
               "The wallet address to get the NFTs of. For example, 0x123456789abcdef0123456789abcdef01234567"
             ),
         }),

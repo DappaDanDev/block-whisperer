@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Block Whisperer by DappaDan
+### AI Powered Web3 Search 
+![Diagram](howitworks.jpg)
 
-## Getting Started
+## How it works 
+**Step 1:** User asks a question. Example "What was Lucs's Last Mint?" 
 
-First, run the development server:
+**Step 2:** The Large Language Model (GPT-4o) takes this question and decides what functions/tools are needed to answer this question. 
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+**Step 3:** The functions are then run. In this example: **First** the LLM will lookup an ENS related to Luc. 
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Step 4:** The LLM will present a Generative UI element to the user with Lucs's ENS name on it to get confirmation from the user. 
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+![Diagram](ens.png)
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
-## Learn More
+**Step 5:** An API request will be sent using the Wallet Address of Kartik to the **Zerion API**. This will include the `operation_type` being mint. 
 
-To learn more about Next.js, take a look at the following resources:
+**Step 6:** Then the LLM will Genearte a UI element to the user with the transaction data of Kartik's last mint.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+![Diagram](transaction.png)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Technologies Used 
+### Web3 Related 
+**Zerion API** - Used for the getting data about wallets including crypto owned, nfts owned and transactions. 
 
-## Deploy on Vercel
+**ENS Lookup** - Used to lookup ENS names to wallet addresses that are required for API calls. Also used to get social accounts of an ENS. 
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Coinmarket Cap API** - Used to get the stats of the a give cryptocurrency. 
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+### Non-Web3 
+**GPT4o** - The Large Language model powering the natural language experience. 
+
+**Vercel AI SDK** - Used to create Generative UI elements. This gives an enhanced user experience instead of dealing with text. 
+
+**Tool Invocaction** - Through the Vercel AI SDK, the LLM can make tool calls and run functions to get answers for users. 
+
+## What Can You Ask
+- Lookup the Wallet Address for an ENS
+- Find the social accounts of an ENS 
+- Find the NFTs Owned by a ENS
+- Find the Crypto Owned by a ENS 
+- Find the transactions by a ENS
+- Find a specific transaction by an ENS 
+- Find details on a certain token
+
+## Whats's Next?
+Integrating DeFi data for questions like "What was my best trade?" 

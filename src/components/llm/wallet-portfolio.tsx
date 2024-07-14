@@ -49,7 +49,7 @@ export function WalletPortfolioCard({
               <TableHead className="whitespace-nowrap text-2xl font-bold leading-none tracking-tight">
                 Crypto Portfolio
               </TableHead>
-              <TableHead className="text-right">Amount</TableHead>
+              <TableHead className="text-right">Amount (in USD)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
